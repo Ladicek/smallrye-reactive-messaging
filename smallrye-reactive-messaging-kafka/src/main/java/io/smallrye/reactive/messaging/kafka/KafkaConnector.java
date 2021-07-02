@@ -301,7 +301,6 @@ public class KafkaConnector implements IncomingConnectorFactory, OutgoingConnect
         }
 
         return builder.build();
-
     }
 
     @Override
@@ -317,6 +316,25 @@ public class KafkaConnector implements IncomingConnectorFactory, OutgoingConnect
 
         for (KafkaSink sink : sinks) {
             sink.isAlive(builder);
+        }
+
+        return builder.build();
+    }
+
+    @Override
+    public HealthReport getStartup() {
+        HealthReport.HealthReportBuilder builder = HealthReport.builder();
+        if (sources.isEmpty() && sinks.isEmpty()) {
+            // TODO is false adequate here?
+            return builder.add("kafka-connector", false).build();
+        }
+
+        for (KafkaSource<?, ?> source : sources) {
+            source.isStarted(builder);
+        }
+
+        for (KafkaSink sink : sinks) {
+            sink.isStarted(builder);
         }
 
         return builder.build();

@@ -304,6 +304,10 @@ public class KafkaSource<K, V> {
         }
     }
 
+    public void isStarted(HealthReport.HealthReportBuilder builder) {
+        // TODO
+    }
+
     public void isAlive(HealthReport.HealthReportBuilder builder) {
         if (isHealthEnabled) {
             List<Throwable> actualFailures;
