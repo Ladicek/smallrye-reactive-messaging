@@ -86,6 +86,7 @@ public class KafkaRecordStream<K, V> extends AbstractMulti<ConsumerRecord<K, V>>
             this.retries = config.getRetryAttempts() == -1 ? Long.MAX_VALUE : config.getRetryAttempts();
             this.pollUni = client.poll()
                     .onItem().transform(cr -> {
+                        pauseResume();
                         if (cr.isEmpty()) {
                             return null;
                         }
@@ -100,6 +101,23 @@ public class KafkaRecordStream<K, V> extends AbstractMulti<ConsumerRecord<K, V>>
                         }
                         return m;
                     });
+        }
+
+        private void pauseResume() {
+            if (pauseResumeEnabled) {
+                long requested = this.requested.get();
+                if (requested == 0 && paused.compareAndSet(false, true)) {
+                    log.pausingChannel(config.getChannel());
+                    client.pause()
+                            .subscribe().with(x -> {
+                            }, this::report);
+                } else if (requested > 0 && paused.compareAndSet(true, false)) {
+                    log.resumingChannel(config.getChannel());
+                    client.resume()
+                            .subscribe().with(x -> {
+                            }, this::report);
+                }
+            }
         }
 
         @Override
@@ -180,21 +198,6 @@ public class KafkaRecordStream<K, V> extends AbstractMulti<ConsumerRecord<K, V>>
 
                 requests = requested.addAndGet(-emitted);
                 emitted = 0;
-
-                if (pauseResumeEnabled) {
-                    int size = q.size();
-                    if (requests <= size && paused.compareAndSet(false, true)) {
-                        log.pausingChannel(config.getChannel());
-                        client.pause()
-                                .subscribe().with(x -> {
-                                }, this::report);
-                    } else if (requests > size && paused.compareAndSet(true, false)) {
-                        log.resumingChannel(config.getChannel());
-                        client.resume()
-                                .subscribe().with(x -> {
-                                }, this::report);
-                    }
-                }
 
                 int w = wip.get();
                 if (missed == w) {
