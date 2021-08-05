@@ -145,4 +145,8 @@ Type: _int_ | false | `1000`
 
 Type: _boolean_ | false | `true`
 
+| *max.poll.buffer.size* | The maximum number of polled messages to buffer waiting to be consumed. This is used to limit the memory consumption while implementing back-pressure with `pause-if-no-requests`. Defaults to `max.poll.records` times 5.
+
+Type: _int_ | false | 
+
 |===

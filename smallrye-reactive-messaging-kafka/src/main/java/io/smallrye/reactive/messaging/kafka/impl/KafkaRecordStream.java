@@ -68,6 +68,8 @@ public class KafkaRecordStream<K, V> extends AbstractMulti<ConsumerRecord<K, V>>
 
         private final RecordQueue<ConsumerRecord<K, V>> queue;
         private final long retries;
+        private final int batchSize;
+        private final int maxQueueSize;
 
         /**
          * {@code true} if the subscription has been cancelled.
@@ -81,16 +83,19 @@ public class KafkaRecordStream<K, V> extends AbstractMulti<ConsumerRecord<K, V>>
             this.client = client;
             this.pauseResumeEnabled = config.getPauseIfNoRequests();
             this.downstream = subscriber;
-            int batchSize = config.config().getOptionalValue(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.class).orElse(500);
+            this.batchSize = config.config().getOptionalValue(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.class)
+                    .orElse(500);
+            this.maxQueueSize = config.getMaxPollBufferSize().orElse(5 * batchSize);
             this.queue = new RecordQueue<>(2 * batchSize);
             this.retries = config.getRetryAttempts() == -1 ? Long.MAX_VALUE : config.getRetryAttempts();
             this.pollUni = client.poll()
                     .onItem().transform(cr -> {
-                        pauseResume();
                         if (cr.isEmpty()) {
+                            pauseResume();
                             return null;
                         }
                         queue.addAll(cr);
+                        pauseResume();
                         return cr;
                     })
                     .plug(m -> {
@@ -106,12 +111,13 @@ public class KafkaRecordStream<K, V> extends AbstractMulti<ConsumerRecord<K, V>>
         private void pauseResume() {
             if (pauseResumeEnabled) {
                 long requested = this.requested.get();
-                if (requested == 0 && paused.compareAndSet(false, true)) {
+                int queueSize = this.queue.size();
+                if ((requested == 0 || queueSize + this.batchSize > this.maxQueueSize) && paused.compareAndSet(false, true)) {
                     log.pausingChannel(config.getChannel());
                     client.pause()
                             .subscribe().with(x -> {
                             }, this::report);
-                } else if (requested > 0 && paused.compareAndSet(true, false)) {
+                } else if ((requested > 0 && queueSize < this.maxQueueSize / 2) && paused.compareAndSet(true, false)) {
                     log.resumingChannel(config.getChannel());
                     client.resume()
                             .subscribe().with(x -> {

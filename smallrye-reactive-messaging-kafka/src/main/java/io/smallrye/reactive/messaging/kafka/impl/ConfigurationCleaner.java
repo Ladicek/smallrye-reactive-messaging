@@ -60,6 +60,8 @@ public class ConfigurationCleaner {
             "key-deserialization-failure-handler",
             "value-deserialization-failure-handler",
             "graceful-shutdown",
+            "pause-if-no-requests",
+            "max.poll.buffer.size",
 
             // Remove most common attributes, may have been configured from the default config
             "key.serializer",

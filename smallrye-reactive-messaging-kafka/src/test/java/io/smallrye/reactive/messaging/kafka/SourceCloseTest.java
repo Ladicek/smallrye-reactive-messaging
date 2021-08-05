@@ -37,6 +37,7 @@ public class SourceCloseTest extends KafkaTestBase {
                 .with("topic", topic)
                 .with("value.deserializer", IntegerDeserializer.class.getName())
                 .with("max.poll.records", 4)
+                .with("max.poll.buffer.size", 100)
                 .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
                 .with(ConsumerConfig.GROUP_ID_CONFIG, groupId)
                 .with(ConsumerConfig.CLIENT_ID_CONFIG, "A");
@@ -47,6 +48,7 @@ public class SourceCloseTest extends KafkaTestBase {
                 .with("topic", topic)
                 .with("value.deserializer", IntegerDeserializer.class.getName())
                 .with("max.poll.records", 4)
+                .with("max.poll.buffer.size", 100)
                 .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
                 .with(ConsumerConfig.GROUP_ID_CONFIG, groupId)
                 .with(ConsumerConfig.CLIENT_ID_CONFIG, "B");
