@@ -3,7 +3,6 @@ package io.smallrye.reactive.messaging.kafka.impl;
 import static io.smallrye.reactive.messaging.kafka.i18n.KafkaLogging.log;
 
 import java.time.Duration;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -112,12 +111,17 @@ public class KafkaRecordStream<K, V> extends AbstractMulti<ConsumerRecord<K, V>>
             if (pauseResumeEnabled) {
                 long requested = this.requested.get();
                 int queueSize = this.queue.size();
+                if (!paused.get() && queueSize > 0) {
+                    log.infof("running, queued %s", queueSize);
+                }
                 if ((requested == 0 || queueSize + this.batchSize > this.maxQueueSize) && paused.compareAndSet(false, true)) {
+                    log.infof("requested %s, queued %s, pausing", requested, queueSize);
                     log.pausingChannel(config.getChannel());
                     client.pause()
                             .subscribe().with(x -> {
                             }, this::report);
                 } else if ((requested > 0 && queueSize < this.maxQueueSize / 2) && paused.compareAndSet(true, false)) {
+                    log.infof("requested %s, queued %s, resuming", requested, queueSize);
                     log.resumingChannel(config.getChannel());
                     client.resume()
                             .subscribe().with(x -> {
@@ -183,7 +187,7 @@ public class KafkaRecordStream<K, V> extends AbstractMulti<ConsumerRecord<K, V>>
 
         private void run() {
             int missed = 1;
-            final Queue<ConsumerRecord<K, V>> q = queue;
+            final RecordQueue<ConsumerRecord<K, V>> q = queue;
             long emitted = 0;
             long requests = requested.get();
             for (;;) {
