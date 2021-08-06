@@ -140,6 +140,7 @@ public class KafkaRecordStream<K, V> extends AbstractMulti<ConsumerRecord<K, V>>
                     } else if (!cancelled) {
                         dispatch();
                     }
+                    pauseResume();
                 }
             } else {
                 throw new IllegalArgumentException("Invalid request");
